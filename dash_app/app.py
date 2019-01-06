@@ -8,14 +8,18 @@ import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output
 
+# To be changed.
 UPLOAD_DIRECTORY = "/Users/Agah/Desktop/KuzuHub/svds.dash/dash_app/data"
 
+# Create upload directory if not available
 if not os.path.exists(UPLOAD_DIRECTORY):
     os.makedirs(UPLOAD_DIRECTORY)
 
+# Development server.
 server = Flask(__name__)
 app = dash.Dash(server=server)
 
+# Serve a file from the upload directory.
 @server.route("/download/<path:path>")
 def download(path):
     """Serve a file from the upload directory."""
@@ -23,7 +27,9 @@ def download(path):
 
 app.config['suppress_callback_exceptions']=True
 
+# Main.
 app.layout = html.Div([
+    # Div for upload component
     html.Div(
     className = "footer",
     children = [
@@ -48,28 +54,32 @@ app.layout = html.Div([
         ),
     ],
     style={"max-width": "500px"}),
+    # Div for file check list
+    # row --> six columns w/o offset (skeleton)
     html.Div(
     className = "row",
     children = [
-    html.Div(className = "six columns",
-    style={"fontColor":"blue","marginTop":"5%","marginLeft":"15px"},
-    children = [
-    html.H3("File List"),
-    dcc.Checklist(id = "check-me",options =[],values=[])
-    ])])
-    ],
-)
+        html.Div(className = "six columns",
+        style={"fontColor":"blue","marginTop":"5%","marginLeft":"15px"},
+        children = [
+        html.H3("File List"),
+        dcc.Checklist(
+            id = "check-me",
+            options =[],
+            values=[])
+        ])
+    ])
+])
 
 
-
+# Decode and store a file uploaded with Plotly Dash.
 def save_file(name, content):
-    """Decode and store a file uploaded with Plotly Dash."""
     data = content.encode("utf8").split(b";base64,")[1]
     with open(os.path.join(UPLOAD_DIRECTORY, name), "wb") as fp:
         fp.write(base64.decodebytes(data))
 
+# List the files in the upload directory.
 def uploaded_files():
-    """List the files in the upload directory."""
     files = []
     for filename in os.listdir(UPLOAD_DIRECTORY):
         path = os.path.join(UPLOAD_DIRECTORY, filename)
@@ -78,10 +88,11 @@ def uploaded_files():
     return files
 
 def file_download_link(filename):
-    """Create a Plotly Dash 'A' element that downloads a file from the app."""
     location = "/download/{}".format(urlquote(filename))
     return html.A(filename, href=location)
 
+# This callback is to list files loaded by dcc.Upload
+# Only SVDS valid files are going to be displayed in checkbox list.
 @app.callback(
     Output("check-me", "options"),
     [Input("upload-data", "filename"), Input("upload-data", "contents")],
@@ -98,8 +109,6 @@ def update_output(uploaded_filenames, uploaded_file_contents):
         return {'label':'No files yet!','value':"Empty"}
     else:
         return [{'label':filename,'value':filename} for filename in files]
-
-
 
 if __name__ == "__main__":
     app.run_server(debug=True, port=8888)
