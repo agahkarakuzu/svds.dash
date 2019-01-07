@@ -6,13 +6,19 @@ import dash
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output
+
 from svds.iop_svds import load_svds
 from svds.validation import SVDSValidator
+
+from svds_dash.correlation.pearson import get_figure as gfpearson
+
 import plotly.graph_objs as go
 from operator import itemgetter
 
+
+
 # To be changed.
-UPLOAD_DIRECTORY = "/Users/Agah/Desktop/KuzuHub/svds.dash/dash_app/data"
+UPLOAD_DIRECTORY = "/home/agah/Desktop/KuzuHub/svds.dash/dash_app/data"
 
 # Create upload directory if not available
 if not os.path.exists(UPLOAD_DIRECTORY):
@@ -155,6 +161,28 @@ def update_output(uploaded_filenames, uploaded_file_contents):
         svds_names = load_svds(UPLOAD_DIRECTORY)[0]
         return [{'label':filename,'value':filename} for filename in svds_names]
 
+# ============================================================================
+
+
+def get_svds_div(svds,name):
+
+    if name == 'Pearson.json':
+        return html.Div([dcc.Graph(
+        id='pearson-scatter',
+        figure=[],
+    ),
+    dcc.Slider(
+        id='pearson-slider',
+        min=1,
+        max=30,
+        value=1,
+        updatemode='drag',
+        marks = {1:'1',10:'10',20:'20',30:'30'},
+
+    )])
+
+# ============================================================================
+
 # Dynamically populate dcc.Tabs each time a file is selected.
 @app.callback(
     Output('my-tabs','children'),
@@ -190,23 +218,6 @@ def render_content(tab):
         return 'idle'
 
 
-def get_svds_div(svds,name):
-
-    if name == 'Pearson.json':
-        return html.Div([dcc.Graph(
-        id='pearson-scatter',
-        figure=[],
-    ),
-    dcc.Slider(
-        id='pearson-slider',
-        min=1,
-        max=30,
-        value=1,
-        updatemode='drag',
-        marks = {1:'1',10:'10',20:'20',30:'30'},
-
-    )])
-
 @app.callback(
 Output('pearson-scatter','figure'),
 [Input('pearson-slider','value')]
@@ -214,64 +225,7 @@ Output('pearson-scatter','figure'),
 def update_lan(value):
     val = value-1
     svds = load_svds(UPLOAD_DIRECTORY)[1]
-    figure={
-        'data': [
-
-            go.Scatter(
-            mode = 'lines',
-            x = itemgetter(*[0,1])(svds.Correlation.Pearson.Required[val]['fitLine']),
-            y = itemgetter(*[2,3])(svds.Correlation.Pearson.Required[val]['fitLine']),
-            name = 'dede',
-            line= dict(
-                color = ('rgb(255,0,0)'),
-                width = 4,
-            )),
-            go.Scatter(
-            mode = 'lines',
-            x = itemgetter(*[0,1])(svds.Correlation.Pearson.Optional[val]['CILine1']),
-            y = itemgetter(*[2,3])(svds.Correlation.Pearson.Optional[val]['CILine1']),
-            fill = None,
-            name = 'dede',
-            line= dict(
-                color = ('rgb(0,0,0)'),
-                width = 2,)
-            ),
-            go.Scatter(
-            mode = 'lines',
-            x = itemgetter(*[0,1])(svds.Correlation.Pearson.Optional[val]['CILine2']),
-            y = itemgetter(*[2,3])(svds.Correlation.Pearson.Optional[val]['CILine2']),
-            fill = 'tonexty',
-            fillcolor = 'rgba(0,200,0,0.2)',
-            name = 'dede',
-            line= dict(
-                color = ('rgb(0,0,0)'),
-                width = 2,)
-            ),
-            go.Scatter(
-                x= svds.Correlation.Pearson.Required[val]['xData'],
-                y= svds.Correlation.Pearson.Required[val]['yData'],
-                text= ['agah'],
-                mode='markers',
-                opacity=0.7,
-                marker={
-                    'size': 20,
-                    'line': {'width': 0.5, 'color': 'white'},
-                    'color': 'blue',
-                },
-                name= 'dede'
-            )
-
-        ],
-        'layout': go.Layout(
-            xaxis={'title': svds.Correlation.Pearson.Required[val]['xLabel'][0]},
-            yaxis={'title': svds.Correlation.Pearson.Required[val]['yLabel'][0]},
-            margin={'l': 40, 'b': 40, 't': 10, 'r': 10},
-            legend={'x': 0, 'y': 1},
-            hovermode='closest'
-        )
-    }
-    return figure
-
+    return gfpearson(svds,index=value)
 
 
 
