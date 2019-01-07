@@ -1,5 +1,6 @@
 import plotly.graph_objs as go
 from operator import itemgetter
+from svds.iop_svds import update as update_dict
 
 def get_figure(svds,**kwargs):
 
@@ -83,12 +84,74 @@ def get_figure(svds,**kwargs):
         'data': traces,
 
         'layout': go.Layout(
+            title = 'Something here',
             xaxis={'title': xLabel},
             yaxis={'title': yLabel},
-            margin={'l': 40, 'b': 40, 't': 10, 'r': 10},
-            legend={'x': 0, 'y': 1},
-            hovermode='closest'
+            width = 600,
+            height = 600,
+            autosize = False,
+            showlegend = False,
+            #margin={'l': 40, 'b': 40, 't': 10, 'r': 10},
+            #legend={'x': 0, 'y': 1},
+            hovermode='closest',
+            plot_bgcolor = 'rgba(240,240,240,0.95)'
         )
     }
+
+    return figure
+
+def get_splom_figure(svds,**kwargs):
+# To get splom there are some requirements:
+# i)  Have more than two vars
+# ii) Segmented if available by some partition that is present in svds.Tag
+
+    if 'partition' in kwargs and 'index' in kwargs:
+
+        partition = kwargs['partition']
+        idx = kwargs['index']
+
+    else:
+        # deal with this later
+        idx = 0
+
+    if [svds.Correlation.Pearson.Tag[0][partition]]:
+        parts = set([d['SegmentID'][0] for d in svds.Correlation.Pearson.Tag])
+
+        # Find dictionaries containing data for the idx segment
+        if idx in parts:
+            idxs = [i for i,_ in enumerate(svds.Correlation.Pearson.Tag) if _[partition] == [idx]]
+
+    # Loop through idxs to get a unique list of all vectors along with their labels for splom
+    dicto = {}
+
+    for ii in idxs:
+        dicto = update_dict(dicto,{svds.Correlation.Pearson.Required[ii]['xLabel'][0]:svds.Correlation.Pearson.Required[ii]['xData']})
+        dicto = update_dict(dicto,{svds.Correlation.Pearson.Required[ii]['yLabel'][0]:svds.Correlation.Pearson.Required[ii]['yData']})
+
+    splomdims = [{'label':k,'values':dicto[k]} for k in dicto]
+
+    trace = go.Splom(dimensions = splomdims)
+
+    trace['diagonal'].update(visible=False)
+    trace['showupperhalf'] = False
+
+    layout = go.Layout(
+            title = str(partition) + ' ' + str(idx),
+            dragmode = 'select',
+            width = 600,
+            height = 600,
+            autosize = False,
+            hovermode = 'closest',
+            plot_bgcolor = 'rgba(240,240,240,0.95)'
+            )
+
+    axis = dict(showline=True, gridcolor="#fff", zeroline = False)
+
+    # Had to hack here
+    for ii in range(len(splomdims)):
+        exec('layout.xaxis' + str(ii+1) + '= axis')
+        exec('layout.yaxis' + str(ii+1) + '= axis')
+
+    figure = dict(data=[trace],layout=layout)
 
     return figure

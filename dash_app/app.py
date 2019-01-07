@@ -11,6 +11,9 @@ from svds.iop_svds import load_svds
 from svds.validation import SVDSValidator
 
 from svds_dash.correlation.pearson import get_figure as gfpearson
+from svds_dash.correlation.pearson import get_splom_figure as splompearson
+
+from svds_dash.components import get_svds_div
 
 import plotly.graph_objs as go
 from operator import itemgetter
@@ -161,28 +164,6 @@ def update_output(uploaded_filenames, uploaded_file_contents):
         svds_names = load_svds(UPLOAD_DIRECTORY)[0]
         return [{'label':filename,'value':filename} for filename in svds_names]
 
-# ============================================================================
-
-
-def get_svds_div(svds,name):
-
-    if name == 'Pearson.json':
-        return html.Div([dcc.Graph(
-        id='pearson-scatter',
-        figure=[],
-    ),
-    dcc.Slider(
-        id='pearson-slider',
-        min=1,
-        max=30,
-        value=1,
-        updatemode='drag',
-        marks = {1:'1',10:'10',20:'20',30:'30'},
-
-    )])
-
-# ============================================================================
-
 # Dynamically populate dcc.Tabs each time a file is selected.
 @app.callback(
     Output('my-tabs','children'),
@@ -202,7 +183,7 @@ def render_content(tab):
     svds_content = load_svds(UPLOAD_DIRECTORY)[1]
     if tab == 'idle':
         return html.Div(
-            children=[html.Iframe(src = "https://qmrlab.org",width="100%",height="550px",style={'border':'0'})]
+            children=[html.Iframe(src = "https://qmrlab.org#home",width="100%",height="500px",style={'border':'0'})]
         )
     elif tab == 'Pearson.json':
         return get_svds_div(svds_content,'Pearson.json')
@@ -226,6 +207,15 @@ def update_lan(value):
     val = value-1
     svds = load_svds(UPLOAD_DIRECTORY)[1]
     return gfpearson(svds,index=value)
+
+@app.callback(
+Output('pearson-splom','figure'),
+[Input('pearson-slider-2','value')]
+)
+def update_lan_2(value):
+    val = value
+    svds = load_svds(UPLOAD_DIRECTORY)[1]
+    return splompearson(svds,partition='SegmentID',index=value)
 
 
 
