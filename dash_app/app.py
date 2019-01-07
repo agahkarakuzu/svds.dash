@@ -1,12 +1,15 @@
 import base64
 import os
 from urllib.parse import quote as urlquote
-
 from flask import Flask, send_from_directory
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output
+from svds.iop_svds import load_svds
+from svds.validation import SVDSValidator
+import plotly.graph_objs as go
+from operator import itemgetter
 
 # To be changed.
 UPLOAD_DIRECTORY = "/Users/Agah/Desktop/KuzuHub/svds.dash/dash_app/data"
@@ -27,40 +30,68 @@ def download(path):
 
 app.config['suppress_callback_exceptions']=True
 
+tabs_styles = {
+    'height': '44px',
+    'color': '#242331',
+    'text-align': 'center',
+    'font-weight': 'bold',
+    'box-shadow': '0px 2px 2px rgba(34,34,34,0.6)'
+}
+tab_style = {
+    'borderBottom': '1px solid #d6d6d6',
+    'padding': '6px',
+    'fontWeight': 'bold'
+}
+
+tab_selected_style = {
+    'borderTop': '1px solid #d6d6d6',
+    'borderBottom': '1px solid #d6d6d6',
+    'backgroundColor': '#242331',
+    'color': 'white',
+    'padding': '6px'
+}
+
+
 # Main.
 app.layout = html.Div([
     # Div for upload component
     html.Div(
-    className = "footer",
-    children = [
-        dcc.Upload(
-            id="upload-data",
-            children=html.Div(
-                ["Drag and drop or click to select SVDS files."]
-            ),
-            style={
-                "width": "100%",
-                "height": "80px",
-                "lineHeight": "200px",
-                "textIndent": "10px",
-                "textAlign": "center",
-                "margin": "10px",
-                'background-image': 'url(https://github.com/agahkarakuzu/svds/blob/master/svds2.png?raw=true)',
-                'background-size': 'contain',
-                'background-repeat': 'no-repeat',
-                'background-position': 'center'
-            },
-            multiple=True,
-        ),
-    ],
-    style={"max-width": "500px"}),
+    className = 'row',
+
+    children = [dcc.Upload(
+    className = "two columns",
+    id = "upload-data",
+    children= html.Div(
+            ["Upload"]
+    ),
+    style={"clear":"both",
+            "position":"absolute",
+            "top":"1",
+            "height":"100px",
+            "width":"17.2%",
+            "lineHeight":"100px",
+            "text-align":"center",
+            "text-weight": "bold",
+            "border-bottom":"solid #fbdeda 10px",
+            "background-color":"rgba(255,255,255,0.5)",
+            "color":"#242331",
+            'background-image': 'url(https://github.com/agahkarakuzu/svds/blob/master/svds2.png?raw=true)',
+            'background-size': 'contain',
+            'background-repeat': 'no-repeat',
+            'background-position': 'center'},
+    multiple=True,
+
+    )]),
     # Div for file check list
-    # row --> six columns w/o offset (skeleton)
     html.Div(
     className = "row",
     children = [
-        html.Div(className = "six columns",
-        style={"fontColor":"blue","marginTop":"5%","marginLeft":"15px"},
+        html.Div(className = "two columns",
+        style={"margin-top":"8%",
+                "width":"17.2%",
+                "border-bottom":"solid #fbdeda 10px",
+                "background-color":"rgba(255,255,255,0.5)",
+                "color":"#242331"},
         children = [
         html.H3("File List"),
         dcc.Checklist(
@@ -68,8 +99,21 @@ app.layout = html.Div([
             options =[],
             values=[])
         ])
+    ]),
+    # Div for the tabs
+    html.Div(
+    className = "row",
+    children = [html.Div(
+    className = "offset-by-two ten columns",
+    style={"position":"absolute","top":"1"},
+    children = [
+    dcc.Tabs(id="my-tabs",value=[],children=[],style=tabs_styles),
+    html.Div(id='tab-output',
+             style= {"margin-right":"5px"}
+                            )
     ])
-])
+    ])
+                    ])
 
 
 # Decode and store a file uploaded with Plotly Dash.
@@ -108,7 +152,128 @@ def update_output(uploaded_filenames, uploaded_file_contents):
     if len(files) == 0:
         return {'label':'No files yet!','value':"Empty"}
     else:
-        return [{'label':filename,'value':filename} for filename in files]
+        svds_names = load_svds(UPLOAD_DIRECTORY)[0]
+        return [{'label':filename,'value':filename} for filename in svds_names]
+
+# Dynamically populate dcc.Tabs each time a file is selected.
+@app.callback(
+    Output('my-tabs','children'),
+    [Input('check-me','values')]
+)
+def update_tabs(value):
+    if value:
+        return [dcc.Tab(label=x,value = x,style=tab_style, selected_style=tab_selected_style) for x in value]
+    else:
+        return dcc.Tab(label = 'Welcome to qMRLab Dash! Please upload your files to start.',
+        value = 'idle',style=tab_style, selected_style=tab_selected_style)
+
+# Fill out tab content depending on its SVDS family::type
+@app.callback(Output('tab-output', 'children'),
+              [Input('my-tabs', 'value')])
+def render_content(tab):
+    svds_content = load_svds(UPLOAD_DIRECTORY)[1]
+    if tab == 'idle':
+        return html.Div(
+            children=[html.Iframe(src = "https://qmrlab.org",width="100%",height="550px",style={'border':'0'})]
+        )
+    elif tab == 'Pearson.json':
+        return get_svds_div(svds_content,'Pearson.json')
+
+
+# Select welcome tab if no SVDS is chosen,
+@app.callback(Output('my-tabs', 'value'),
+              [Input('my-tabs', 'children')])
+def render_content(tab):
+    # The only case where tab is dict is when no file is chosen
+    # Otherwise tab is always a list of dicts
+    if isinstance(tab, dict):
+        return 'idle'
+
+
+def get_svds_div(svds,name):
+
+    if name == 'Pearson.json':
+        return html.Div([dcc.Graph(
+        id='pearson-scatter',
+        figure=[],
+    ),
+    dcc.Slider(
+        id='pearson-slider',
+        min=1,
+        max=30,
+        value=1,
+        updatemode='drag',
+        marks = {1:'1',10:'10',20:'20',30:'30'},
+
+    )])
+
+@app.callback(
+Output('pearson-scatter','figure'),
+[Input('pearson-slider','value')]
+)
+def update_lan(value):
+    val = value-1
+    svds = load_svds(UPLOAD_DIRECTORY)[1]
+    figure={
+        'data': [
+
+            go.Scatter(
+            mode = 'lines',
+            x = itemgetter(*[0,1])(svds.Correlation.Pearson.Required[val]['fitLine']),
+            y = itemgetter(*[2,3])(svds.Correlation.Pearson.Required[val]['fitLine']),
+            name = 'dede',
+            line= dict(
+                color = ('rgb(255,0,0)'),
+                width = 4,
+            )),
+            go.Scatter(
+            mode = 'lines',
+            x = itemgetter(*[0,1])(svds.Correlation.Pearson.Optional[val]['CILine1']),
+            y = itemgetter(*[2,3])(svds.Correlation.Pearson.Optional[val]['CILine1']),
+            fill = None,
+            name = 'dede',
+            line= dict(
+                color = ('rgb(0,0,0)'),
+                width = 2,)
+            ),
+            go.Scatter(
+            mode = 'lines',
+            x = itemgetter(*[0,1])(svds.Correlation.Pearson.Optional[val]['CILine2']),
+            y = itemgetter(*[2,3])(svds.Correlation.Pearson.Optional[val]['CILine2']),
+            fill = 'tonexty',
+            fillcolor = 'rgba(0,200,0,0.2)',
+            name = 'dede',
+            line= dict(
+                color = ('rgb(0,0,0)'),
+                width = 2,)
+            ),
+            go.Scatter(
+                x= svds.Correlation.Pearson.Required[val]['xData'],
+                y= svds.Correlation.Pearson.Required[val]['yData'],
+                text= ['agah'],
+                mode='markers',
+                opacity=0.7,
+                marker={
+                    'size': 20,
+                    'line': {'width': 0.5, 'color': 'white'},
+                    'color': 'blue',
+                },
+                name= 'dede'
+            )
+
+        ],
+        'layout': go.Layout(
+            xaxis={'title': svds.Correlation.Pearson.Required[val]['xLabel'][0]},
+            yaxis={'title': svds.Correlation.Pearson.Required[val]['yLabel'][0]},
+            margin={'l': 40, 'b': 40, 't': 10, 'r': 10},
+            legend={'x': 0, 'y': 1},
+            hovermode='closest'
+        )
+    }
+    return figure
+
+
+
 
 if __name__ == "__main__":
     app.run_server(debug=True, port=8888)

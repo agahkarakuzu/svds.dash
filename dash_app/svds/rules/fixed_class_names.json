@@ -1,0 +1,10 @@
+{
+    "fixed_class_names" : [
+        "Correlation::Pearson",
+        "Correlation::Spearman",
+        "Correlation::Bend",
+        "Correlation::Concordance",
+        "Correlation::Skipped",
+        "Correlation::Descriptive"
+    ]
+}

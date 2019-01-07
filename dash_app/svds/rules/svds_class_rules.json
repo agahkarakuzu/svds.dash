@@ -1,0 +1,66 @@
+{
+  "Correlation::Pearson": {
+    "Required": [
+      "xData",
+      "yData",
+      "xLabel",
+      "yLabel",
+      "rPearson",
+      "fitLine"
+    ],
+    "Optional": [
+      "CI",
+      "CILevel",
+      "pVal",
+      "h",
+      "slope",
+      "intercept",
+      "CILine1",
+      "CILine2"
+    ]
+  },
+"Correlation::Spearman":{
+  "Required":[
+    "xData",
+    "yData",
+    "xLabel",
+    "yLabel",
+    "rSpearman",
+    "fitLine"
+  ],
+  "Optional":[
+    "CI",
+    "CILevel",
+    "pVal",
+    "h",
+    "slope",
+    "intercept",
+    "CILine1",
+    "CILine2"
+  ]
+},
+"Correlation::Concordance":{
+  "Required":[
+    "xData",
+    "yData",
+    "xLabel",
+    "yLabel",
+    "rhoConcordance",
+    "shiftedLine",
+    "identityLine"
+  ],
+  "Optional":[
+    "CI",
+    "CILevel",
+    "pVal",
+    "h",
+    "shift",
+    "scale",
+    "biasFactor",
+    "CILine1",
+    "CILine2"
+  ]
+}
+
+
+}

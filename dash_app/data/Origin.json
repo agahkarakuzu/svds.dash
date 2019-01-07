@@ -1,0 +1,10 @@
+{
+	"Origin": {
+		"operationSystem": "MACI64",
+		"softwareName": "qMRLab",
+		"softwareVersion": [2,0,10],
+		"platform": "MATLAB",
+		"platformVersion": "8.6.0.267246 (R2015b)",
+		"date": "02-Jan-2019"
+	}
+}
